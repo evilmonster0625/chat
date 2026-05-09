@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>mallchat-frequency-control — 频率控制模块详解</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Roboto, Helvetica, Arial, sans-serif;
+            background: #f4f6f9;
+            color: #1e293b;
+            line-height: 1.7;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            padding: 50px 30px;
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            border-radius: 16px;
+            margin-bottom: 36px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+        }
+
+        .header h1 {
+            font-size: 28px;
+            color: #fff;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        .header .subtitle {
+            color: #94a3b8;
+            font-size: 15px;
+            margin-top: 8px;
+        }
+
+        /* Section */
+        .section {
+            background: #fff;
+            border-radius: 12px;
+            padding: 32px 36px;
+            margin-bottom: 28px;
+            box-shadow: 0 1px 6px rgba(0,0,0,0.05);
+            border: 1px solid #e9edf2;
+        }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #0f172a;
+            padding-bottom: 12px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e9edf2;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-title .badge {
+            font-size: 12px;
+            font-weight: 500;
+            background: #e2e8f0;
+            color: #475569;
+            padding: 2px 10px;
+            border-radius: 20px;
+        }
+
+        /* Tags */
+        .tag-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .tag {
+            background: #eef2ff;
+            color: #4338ca;
+            font-size: 13px;
+            font-weight: 500;
+            padding: 4px 14px;
+            border-radius: 20px;
+        }
+
+        /* Paragraphs */
+        p {
+            margin-bottom: 14px;
+            font-size: 15px;
+        }
+
+        p:last-child {
+            margin-bottom: 0;
+        }
+
+        code {
+            font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace;
+            font-size: 13px;
+            background: #f1f5f9;
+            padding: 2px 8px;
+            border-radius: 4px;
+            color: #b45309;
+        }
+
+        pre {
+            background: #0f172a;
+            color: #e2e8f0;
+            border-radius: 8px;
+            padding: 18px 22px;
+            overflow-x: auto;
+            font-size: 13px;
+            line-height: 1.6;
+            margin: 16px 0;
+            font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace;
+        }
+
+        pre .kw { color: #38bdf8; }  /* keyword */
+        pre .op { color: #c084fc; }  /* operator */
+        pre .fn { color: #fbbf24; }  /* function/method */
+        pre .cm { color: #64748b; font-style: italic; } /* comment */
+        pre .s { color: #34d399; }   /* string */
+        pre .t { color: #f87171; }   /* type/class */
+        pre .v { color: #e2e8f0; }   /* variable */
+        pre .n { color: #e2e8f0; }   /* normal */
+
+        /* Architecture diagram */
+        .arch {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 24px 20px;
+            margin: 16px 0;
+            font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace;
+            font-size: 13px;
+            line-height: 1.7;
+            white-space: pre;
+            overflow-x: auto;
+        }
+
+        .arch .hl { color: #2563eb; font-weight: 600; }
+        .arch .g { color: #059669; }  /* green */
+        .arch .o { color: #d97706; }  /* orange */
+        .arch .p { color: #7c3aed; }  /* purple */
+        .arch .dim { color: #94a3b8; }
+        .arch .r { color: #dc2626; }
+
+        /* Strategy cards */
+        .strategy-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 18px;
+            margin: 18px 0;
+        }
+
+        .strategy-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 20px 22px;
+        }
+
+        .strategy-card h4 {
+            font-size: 15px;
+            font-weight: 600;
+            color: #0f172a;
+            margin-bottom: 6px;
+        }
+
+        .strategy-card .meta {
+            font-size: 13px;
+            color: #64748b;
+            margin-bottom: 10px;
+        }
+
+        .strategy-card .meta strong {
+            color: #475569;
+        }
+
+        .strategy-card p {
+            font-size: 14px;
+            margin-bottom: 0;
+        }
+
+        /* Design pattern cards */
+        .pattern-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 14px;
+            margin: 16px 0;
+        }
+
+        .pattern-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 18px 20px;
+        }
+
+        .pattern-card h4 {
+            font-size: 15px;
+            font-weight: 600;
+            color: #0f172a;
+            margin-bottom: 4px;
+        }
+
+        .pattern-card .en {
+            font-size: 13px;
+            color: #64748b;
+            margin-bottom: 8px;
+        }
+
+        .pattern-card p {
+            font-size: 14px;
+            margin-bottom: 0;
+        }
+
+        /* Two-column layout */
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 16px 0;
+        }
+
+        .col-box {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 18px 22px;
+        }
+
+        .col-box h4 {
+            font-size: 15px;
+            font-weight: 600;
+            color: #0f172a;
+            margin-bottom: 8px;
+        }
+
+        .col-box ul {
+            padding-left: 20px;
+            font-size: 14px;
+        }
+
+        .col-box ul li {
+            margin-bottom: 4px;
+        }
+
+        .col-box ul li:last-child {
+            margin-bottom: 0;
+        }
+
+        /* Flow steps */
+        .flow-steps {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin: 18px 0;
+        }
+
+        .step {
+            flex: 1;
+            min-width: 160px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 16px 18px;
+            text-align: center;
+        }
+
+        .step .step-num {
+            display: inline-block;
+            width: 28px;
+            height: 28px;
+            line-height: 28px;
+            border-radius: 50%;
+            background: #1e293b;
+            color: #fff;
+            font-weight: 700;
+            font-size: 13px;
+            margin-bottom: 8px;
+        }
+
+        .step h5 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #0f172a;
+            margin-bottom: 4px;
+        }
+
+        .step p {
+            font-size: 13px;
+            color: #64748b;
+            margin-bottom: 0;
+        }
+
+        /* Divider */
+        .divider {
+            border: none;
+            border-top: 1px solid #e9edf2;
+            margin: 20px 0;
+        }
+
+        /* Responsive */
+        @media (max-width: 700px) {
+            .section { padding: 24px 18px; }
+            .two-col { grid-template-columns: 1fr; }
+            .strategy-grid { grid-template-columns: 1fr; }
+            .pattern-grid { grid-template-columns: 1fr; }
+            .flow-steps { flex-direction: column; }
+            .step { min-width: auto; }
+            .arch { font-size: 11px; padding: 16px 12px; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <!-- Header -->
+    <div class="header">
+        <h1>mallchat-frequency-control</h1>
+        <div class="subtitle">频率控制（限流）模块 — 通用分布式限流基础设施</div>
+    </div>
+
+    <!-- 1. 这是什么 -->
+    <div class="section">
+        <div class="section-title">概览 <span class="badge">Overview</span></div>
+        <p>为 MallChat 提供通用的接口频率控制能力，防止接口被恶意或意外高频调用导致服务过载。支持<strong>三种分布式限流策略</strong>，可<strong>注解式</strong>或<strong>编程式</strong>调用，贯穿从 AOP 切面到 Redis 存储的完整链路。</p>
+        <div class="tag-list">
+            <span class="tag"># 模板方法</span>
+            <span class="tag"># 策略模式</span>
+            <span class="tag"># 工厂模式</span>
+            <span class="tag"># AOP</span>
+            <span class="tag"># Redis 分布式限流</span>
+            <span class="tag"># 注解驱动</span>
+        </div>
+    </div>
+
+    <!-- 2. 架构分层 -->
+    <div class="section">
+        <div class="section-title">模块架构 <span class="badge">Architecture</span></div>
+        <div class="arch">
+<span class="dim">┌──────────────────────────────────────────────────────────────────┐</span>
+<span class="dim">│</span>                     <span class="hl">使用方式（二选一）</span>                      <span class="dim">│</span>
+<span class="dim">├──────────────────────────┬───────────────────────────────────────┤</span>
+<span class="dim">│</span>  <span class="g">注解方式 (AOP)</span>           │  <span class="g">编程式调用</span>                       <span class="dim">│</span>
+<span class="dim">│</span>  <span class="o">@FrequencyControl</span>        │  <span class="o">FrequencyControlUtil</span>               <span class="dim">│</span>
+<span class="dim">├─────────────┬────────────┴───────────────────────────────────────┤</span>
+<span class="dim">│</span>             <span class="hl">▼</span>                                                <span class="dim">│</span>
+<span class="dim">│</span>  <span class="hl">FrequencyControlAspect</span>  <span class="dim">(Aspect 切面)</span>                       <span class="dim">│</span>
+<span class="dim">│</span>  解析注解参数 → 构建 DTO → 委托给策略工厂              <span class="dim">│</span>
+<span class="dim">├──────────────────────────────────────────────────────────────────┤</span>
+<span class="dim">│</span>             <span class="hl">▼</span>                                                <span class="dim">│</span>
+<span class="dim">│</span>  <span class="hl">FrequencyControlStrategyFactory</span>  <span class="dim">(策略工厂)</span>               <span class="dim">│</span>
+<span class="dim">│</span>  <span class="dim">通过策略名称获取对应的 AbstractFrequencyControlService</span>     <span class="dim">│</span>
+<span class="dim">├──────────────────────────────────────────────────────────────────┤</span>
+<span class="dim">│</span>             <span class="hl">▼</span>                                                <span class="dim">│</span>
+<span class="dim">│</span>  <span class="hl">AbstractFrequencyControlService</span>  <span class="dim">(模板方法)</span>                 <span class="dim">│</span>
+<span class="dim">│</span>  ┌─────────────────────────────────────────────────────────┐   <span class="dim">│</span>
+<span class="dim">│</span>  <span class="dim">│</span>  ① <span class="r">reachRateLimit()</span>  → 是否达到阈值？                 <span class="dim">│</span>
+<span class="dim">│</span>  <span class="dim">│</span>  ② <span class="g">supplier.get()</span>    → 执行业务逻辑                  <span class="dim">│</span>
+<span class="dim">│</span>  <span class="dim">│</span>  ③ <span class="o">addStatistics()</span>   → finally 计数 +1              <span class="dim">│</span>
+<span class="dim">│</span>  └─────────────────────────────────────────────────────────┘   <span class="dim">│</span>
+<span class="dim">├──────────────┬──────────────────────────────┬───────────────────┤</span>
+<span class="dim">│</span>              <span class="hl">▼</span>                              <span class="hl">▼</span>                   <span class="dim">│</span>
+<span class="dim">│</span>  <span class="g">Redis 分布式实现</span>               <span class="g">JVM 本地实现</span>             <span class="dim">│</span>
+<span class="dim">│</span>  TotalCountWithInFixTime        FixWindow                <span class="dim">│</span>
+<span class="dim">│</span>  SlidingWindowFrequency          SlideWindow              <span class="dim">│</span>
+<span class="dim">│</span>  TokenBucketFrequency            LeakyBucket /            <span class="dim">│</span>
+<span class="dim">│</span>                                   TokenBucket             <span class="dim">│</span>
+<span class="dim">└──────────────────────────────────────────────────────────────────┘</span>
+        </div>
+    </div>
+
+    <!-- 3. 核心思想 -->
+    <div class="section">
+        <div class="section-title">核心思想 <span class="badge">Core Idea</span></div>
+        <p>所有限流策略复用同一个骨架，差异只在于"如何判断超限"和"如何计数"。</p>
+
+        <div class="flow-steps">
+            <div class="step">
+                <div class="step-num">1</div>
+                <h5>reachRateLimit</h5>
+                <p>检查是否达到阈值，超限则抛 <code>FrequencyControlException</code></p>
+            </div>
+            <div class="step">
+                <div class="step-num">2</div>
+                <h5>supplier.get</h5>
+                <p>未超限，执行业务逻辑</p>
+            </div>
+            <div class="step">
+                <div class="step-num">3</div>
+                <h5>addStatistics</h5>
+                <p>finally 块中计数 +1，无论成败</p>
+            </div>
+        </div>
+
+        <p>抽象类中的核心方法：</p>
+        <pre>
+<span class="kw">private</span> <span class="t">&lt;T&gt;</span> <span class="t">T</span> <span class="fn">executeWithFrequencyControlMap</span>(
+    <span class="t">Map</span>&lt;<span class="t">String</span>, <span class="t">K</span>&gt; frequencyControlMap,
+    <span class="t">SupplierThrowWithoutParam</span>&lt;<span class="t">T</span>&gt; supplier
+) <span class="kw">throws</span> <span class="t">Throwable</span> {
+    <span class="cm">// ① 先检查是否超限</span>
+    <span class="kw">if</span> (<span class="fn">reachRateLimit</span>(frequencyControlMap)) {
+        <span class="kw">throw new</span> <span class="t">FrequencyControlException</span>(...);
+    }
+    <span class="kw">try</span> {
+        <span class="cm">// ② 没超限就执行业务</span>
+        <span class="kw">return</span> <span class="fn">supplier.get</span>();
+    } <span class="kw">finally</span> {
+        <span class="cm">// ③ 无论成功失败，计数 +1</span>
+        <span class="fn">addFrequencyControlStatisticsCount</span>(frequencyControlMap);
+    }
+}</pre>
+    </div>
+
+    <!-- 4. 三种限流策略 -->
+    <div class="section">
+        <div class="section-title">三种分布式限流策略 <span class="badge">Strategies</span></div>
+
+        <div class="strategy-grid">
+            <div class="strategy-card">
+                <h4>固定窗口</h4>
+                <div class="meta"><strong>Redis:</strong> String · <strong>类:</strong> TotalCountWithInFixTimeFrequencyController</div>
+                <p>基于 <code>INCR</code> + 过期时间实现。如"10 秒内最多 5 次"，key 过期自动重置计数器。实现简单，但存在窗口边界突发流量问题。</p>
+            </div>
+
+            <div class="strategy-card">
+                <h4>滑动窗口</h4>
+                <div class="meta"><strong>Redis:</strong> ZSet · <strong>类:</strong> SlidingWindowFrequencyController</div>
+                <p>ZSet 记录每次请求时间戳，检查时删除窗口外过期记录，只统计窗口内请求。平滑程度由 <code>windowSize</code> + <code>period</code> 控制。</p>
+            </div>
+
+            <div class="strategy-card">
+                <h4>令牌桶</h4>
+                <div class="meta"><strong>Redis:</strong> String · <strong>类:</strong> TokenBucketFrequencyController</div>
+                <p><code>TokenBucketManager</code> 维护带补充机制的令牌桶，每次消耗 1 个令牌。支持突发流量（积攒的令牌可短时间内用完）。</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. 三种 Target -->
+    <div class="section">
+        <div class="section-title">限流对象 <span class="badge">Target</span></div>
+        <p>通过 <code>@FrequencyControl(target = ...)</code> 指定对什么维度进行限流：</p>
+        <div class="two-col">
+            <div class="col-box">
+                <h4>EL（SpEL 表达式）</h4>
+                <p>最灵活，通过 Spring 表达式自定义限流 key，如根据 <code>#request.userId</code>、roomId 等。</p>
+            </div>
+            <div class="col-box">
+                <h4>IP / UID</h4>
+                <p>从 <code>RequestHolder</code> 获取请求 IP 或登录用户 ID，对单个 IP 或用户进行限流。</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 6. 设计模式 -->
+    <div class="section">
+        <div class="section-title">使用的设计模式 <span class="badge">Patterns</span></div>
+
+        <div class="pattern-grid">
+            <div class="pattern-card">
+                <h4>模板方法</h4>
+                <div class="en">Template Method</div>
+                <p><code>AbstractFrequencyControlService</code> 定义算法骨架，子类实现 <code>reachRateLimit()</code> 和 <code>addStatistics()</code>，复用控制流程。</p>
+            </div>
+            <div class="pattern-card">
+                <h4>策略模式</h4>
+                <div class="en">Strategy</div>
+                <p>三种限流算法各自独立封装，运行时通过工厂按名称获取对应策略实现。</p>
+            </div>
+            <div class="pattern-card">
+                <h4>工厂模式</h4>
+                <div class="en">Factory</div>
+                <p><code>FrequencyControlStrategyFactory</code> 以 <code>Map&lt;String, AbstractFrequencyControlService&gt;</code> 存储策略实例，<code>@PostConstruct</code> 自动注册。</p>
+            </div>
+            <div class="pattern-card">
+                <h4>注解 + AOP</h4>
+                <div class="en">Annotation + Aspect</div>
+                <p><code>@FrequencyControl</code> 声明式限流，<code>FrequencyControlAspect</code> 解析注解、构建 DTO 并委托给工厂。</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 7. 使用方式 -->
+    <div class="section">
+        <div class="section-title">两种使用方式 <span class="badge">Usage</span></div>
+        <div class="two-col">
+            <div class="col-box">
+                <h4>注解式（推荐）</h4>
+                <pre><span class="cm">// 10 秒内最多 3 次，按用户限流</span>
+<span class="o">@FrequencyControl</span>(<span class="n">time</span> = <span class="s">10</span>, <span class="n">count</span> = <span class="s">3</span>,
+    <span class="n">target</span> = <span class="t">FrequencyControl</span>.<span class="t">Target</span>.<span class="v">UID</span>)
+<span class="kw">public</span> <span class="t">Void</span> <span class="fn">sendMessage</span>(...) { ... }</pre>
+            </div>
+            <div class="col-box">
+                <h4>编程式</h4>
+                <pre><span class="t">FrequencyControlUtil</span>.<span class="fn">executeWithFrequencyControl</span>(
+    <span class="s">"TotalCountWithInFixTime"</span>,
+    <span class="kw">new</span> <span class="t">FixedWindowDTO</span>(<span class="s">"key"</span>, <span class="s">10</span>, <span class="n">SECONDS</span>, <span class="s">3</span>),
+    () -&gt; <span class="fn">doSomething</span>()
+);</pre>
+            </div>
+        </div>
+    </div>
+
+    <!-- 8. 双套实现 -->
+    <div class="section">
+        <div class="section-title">双套实现对比 <span class="badge">Implementations</span></div>
+        <div class="two-col">
+            <div class="col-box">
+                <h4>Redis 分布式实现</h4>
+                <p>基于 Redis 原子操作（INCR、ZSet），支持跨进程 / 多实例限流，适合生产环境。</p>
+                <ul>
+                    <li>固定窗口 — <code>String INCR</code></li>
+                    <li>滑动窗口 — <code>ZSet</code> 时间戳集合</li>
+                    <li>令牌桶 — <code>String</code> 令牌数 + 补充器</li>
+                </ul>
+            </div>
+            <div class="col-box">
+                <h4>JVM 本地实现</h4>
+                <p>单机限流，基于 <code>synchronized</code> + 内存数据结构，作为算法示例存在。</p>
+                <ul>
+                    <li><code>FixWindow</code> — 计数器 + 时间窗口</li>
+                    <li><code>SlideWindow</code> — LinkedList 时间戳滑动</li>
+                    <li><code>TokenBucketRateLimiter</code> / <code>LeakyBucketRateLimiter</code></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- 9. 包结构 -->
+    <div class="section">
+        <div class="section-title">包结构 <span class="badge">Package Map</span></div>
+        <pre>
+<span class="kw">com.abin.frequencycontrol</span>
+├── <span class="hl">annotation</span>/
+│   ├── <span class="o">FrequencyControl.java</span>           <span class="dim">// 限流注解（可重复）</span>
+│   └── <span class="o">FrequencyControlContainer.java</span>  <span class="dim">// 容器注解 @Repeatable 支持</span>
+├── <span class="hl">aspect</span>/
+│   └── <span class="o">FrequencyControlAspect.java</span>     <span class="dim">// AOP 切面：解析注解 → 构建 DTO → 调用工厂</span>
+├── <span class="hl">service/frequencycontrol/</span>
+│   ├── <span class="hl">strategy/</span>                     <span class="dim">// Redis 分布式限流实现</span>
+│   │   ├── <span class="o">TotalCountWithInFixTimeFrequencyController.java</span>
+│   │   ├── <span class="o">SlidingWindowFrequencyController.java</span>
+│   │   └── <span class="o">TokenBucketFrequencyController.java</span>
+│   ├── <span class="hl">single/</span>                        <span class="dim">// JVM 本地限流实现（算法示例）</span>
+│   │   ├── <span class="o">FixWindow.java</span>
+│   │   ├── <span class="o">SlideWindow.java</span>
+│   │   ├── <span class="o">TokenBucketRateLimiter.java</span>
+│   │   └── <span class="o">LeakyBucketRateLimiter.java</span>
+│   ├── <span class="o">AbstractFrequencyControlService.java</span>  <span class="dim">// 模板方法抽象类</span>
+│   ├── <span class="o">FrequencyControlStrategyFactory.java</span>  <span class="dim">// 策略工厂</span>
+│   └── <span class="o">FrequencyControlUtil.java</span>             <span class="dim">// 编程式调用工具类</span>
+├── <span class="hl">domain/dto/</span>
+│   ├── <span class="o">FixedWindowDTO.java</span>
+│   ├── <span class="o">SlidingWindowDTO.java</span>
+│   ├── <span class="o">TokenBucketDTO.java</span>
+│   └── <span class="o">FrequencyControlDTO.java</span>       <span class="dim">// 抽象 DTO 基类</span>
+├── <span class="hl">exception/</span>
+│   ├── <span class="o">FrequencyControlException.java</span>  <span class="dim">// 限流异常</span>
+│   └── <span class="o">BusinessException.java</span>         <span class="dim">// 通用业务异常</span>
+├── <span class="hl">intecepter/</span>
+│   ├── <span class="o">CollectorInterceptor.java</span>      <span class="dim">// 请求信息采集拦截器</span>
+│   └── <span class="o">TokenInterceptor.java</span>          <span class="dim">// Token 校验拦截器</span>
+├── <span class="hl">mannager/</span>
+│   └── <span class="o">TokenBucketManager.java</span>        <span class="dim">// 令牌桶管理器（Redis 实现）</span>
+├── <span class="hl">config/</span>
+│   └── <span class="o">InterceptorConfig.java</span>         <span class="dim">// 拦截器注册配置</span>
+└── <span class="hl">util/</span>
+    ├── <span class="o">RequestHolder.java</span>             <span class="dim">// 请求上下文持有者（IP/UID）</span>
+    └── <span class="o">AssertUtil.java</span>                <span class="dim">// 断言工具</span></pre>
+    </div>
+
+</div>
+</body>
+</html>

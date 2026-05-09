@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MallChat Transaction 模块技术文档</title>
+    <style>
+        /* ========== Reset & Base ========== */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+            color: #1a1a2e;
+            background: #f8f9fc;
+            line-height: 1.7;
+            font-size: 15px;
+        }
+        a { color: #3b82f6; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+
+        /* ========== Sidebar ========== */
+        .sidebar {
+            position: fixed; top: 0; left: 0; width: 260px; height: 100vh;
+            background: #1a1a2e; color: #c4c4d4; overflow-y: auto;
+            z-index: 100; padding: 24px 0;
+        }
+        .sidebar h2 {
+            font-size: 14px; font-weight: 600; text-transform: uppercase;
+            letter-spacing: 1px; color: #6b7280; padding: 0 20px 12px;
+            border-bottom: 1px solid #2a2a3e;
+        }
+        .sidebar nav { padding: 8px 0; }
+        .sidebar nav a {
+            display: block; padding: 7px 20px; color: #9ca3af; font-size: 14px;
+            border-left: 3px solid transparent; transition: all 0.15s;
+        }
+        .sidebar nav a:hover, .sidebar nav a.active {
+            color: #fff; background: rgba(59,130,246,0.1); text-decoration: none;
+        }
+        .sidebar nav a.active { border-left-color: #3b82f6; color: #60a5fa; }
+        .sidebar .section-label {
+            display: block; padding: 16px 20px 4px; color: #6b7280; font-size: 11px;
+            text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;
+        }
+
+        /* ========== Main Content ========== */
+        .main {
+            margin-left: 260px; padding: 0; max-width: 960px;
+        }
+        .main > section {
+            padding: 48px 48px 32px; border-bottom: 1px solid #e5e7eb;
+        }
+        .main > section:last-child { border-bottom: none; }
+
+        /* ========== Typography ========== */
+        h1 {
+            font-size: 32px; font-weight: 700; color: #111827; margin-bottom: 6px;
+        }
+        .subtitle {
+            font-size: 16px; color: #6b7280; margin-bottom: 8px;
+        }
+        .meta {
+            font-size: 13px; color: #9ca3af;
+        }
+        h2 {
+            font-size: 22px; font-weight: 600; color: #111827;
+            margin-bottom: 16px; padding-bottom: 8px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        h3 {
+            font-size: 17px; font-weight: 600; color: #1f2937;
+            margin: 24px 0 10px;
+        }
+        h4 {
+            font-size: 14px; font-weight: 600; color: #374151;
+            margin: 18px 0 6px;
+        }
+        p, li { color: #374151; }
+        p { margin-bottom: 12px; }
+
+        /* ========== Lists ========== */
+        ul, ol { padding-left: 20px; margin-bottom: 14px; }
+        li { margin-bottom: 4px; }
+
+        /* ========== Code ========== */
+        code {
+            font-family: "JetBrains Mono", "Fira Code", "Cascadia Code", Consolas, monospace;
+            font-size: 13px; background: #eef2ff; color: #4338ca;
+            padding: 2px 6px; border-radius: 4px;
+        }
+        pre {
+            background: #1e1e2e; color: #cdd6f4; border-radius: 8px;
+            padding: 16px 20px; overflow-x: auto; margin: 12px 0 18px;
+            font-size: 13px; line-height: 1.6;
+        }
+        pre code {
+            background: none; color: inherit; padding: 0; font-size: inherit;
+        }
+
+        /* ========== Tables ========== */
+        table {
+            width: 100%; border-collapse: collapse; margin: 12px 0 18px;
+            font-size: 14px;
+        }
+        th, td {
+            text-align: left; padding: 10px 14px; border: 1px solid #d1d5db;
+        }
+        th {
+            background: #f3f4f6; font-weight: 600; color: #374151;
+        }
+        td { color: #4b5563; }
+        tr:nth-child(even) td { background: #fafbfc; }
+
+        /* ========== Callouts ========== */
+        .callout {
+            padding: 14px 18px; border-radius: 8px; margin: 16px 0;
+            border-left: 4px solid;
+        }
+        .callout.info {
+            background: #eff6ff; border-color: #3b82f6; color: #1e40af;
+        }
+        .callout.warn {
+            background: #fffbeb; border-color: #f59e0b; color: #92400e;
+        }
+        .callout.tip {
+            background: #f0fdf4; border-color: #22c55e; color: #166534;
+        }
+
+        /* ========== Diagrams ========== */
+        .diagram {
+            background: #fff; border: 1px solid #e5e7eb; border-radius: 10px;
+            padding: 20px; margin: 16px 0; font-family: monospace;
+            font-size: 13px; line-height: 1.6; overflow-x: auto;
+            white-space: pre; color: #1f2937;
+        }
+        .diagram .hl { color: #3b82f6; font-weight: bold; }
+        .diagram .hlg { color: #22c55e; }
+        .diagram .hlr { color: #ef4444; }
+        .diagram .hlo { color: #f59e0b; }
+
+        /* ========== Hero ========== */
+        .hero {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff; padding: 64px 48px !important;
+        }
+        .hero h1 { color: #fff; font-size: 36px; }
+        .hero .subtitle { color: #9ca3af; font-size: 17px; }
+
+        /* ========== Badge ========== */
+        .badge {
+            display: inline-block; font-size: 11px; font-weight: 600;
+            padding: 2px 8px; border-radius: 10px; margin-right: 4px;
+        }
+        .badge.blue { background: #dbeafe; color: #1d4ed8; }
+        .badge.green { background: #d1fae5; color: #065f46; }
+        .badge.red { background: #fee2e2; color: #991b1b; }
+
+        /* ========== Responsive ========== */
+        @media (max-width: 768px) {
+            .sidebar { display: none; }
+            .main { margin-left: 0; }
+            .main > section { padding: 32px 20px; }
+            .hero { padding: 40px 20px !important; }
+        }
+
+        /* ========== Print ========== */
+        @media print {
+            .sidebar { display: none; }
+            .main { margin-left: 0; }
+            .main > section { page-break-inside: avoid; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ========== Sidebar ========== -->
+<aside class="sidebar">
+    <h2>mallchat-transaction</h2>
+    <nav>
+        <span class="section-label">概述</span>
+        <a href="#overview" class="active">模块简介</a>
+        <a href="#philosophy">设计思想</a>
+
+        <span class="section-label">架构</span>
+        <a href="#arch">整体架构</a>
+        <a href="#flow">核心数据流</a>
+
+        <span class="section-label">组件详解</span>
+        <a href="#annotation">@SecureInvoke 注解</a>
+        <a href="#aspect">SecureInvokeAspect 切面</a>
+        <a href="#service">SecureInvokeService 核心服务</a>
+        <a href="#dao">数据访问层</a>
+        <a href="#entity">实体与 DTO</a>
+        <a href="#holder">SecureInvokeHolder</a>
+        <a href="#mq">MQProducer 可靠消息</a>
+        <a href="#configurer">SecureInvokeConfigurer</a>
+        <a href="#autoconfig">TransactionAutoConfiguration</a>
+
+        <span class="section-label">实践</span>
+        <a href="#usage">使用方式</a>
+        <a href="#decisions">关键设计决策</a>
+    </nav>
+</aside>
+
+<!-- ========== Main Content ========== -->
+<div class="main">
+
+<!-- ===== Hero ===== -->
+<section class="hero">
+    <h1>@SecureInvoke — 事务安全执行模块</h1>
+    <p class="subtitle">保证方法在数据库事务提交后「至少执行一次」的轻量级基础设施</p>
+    <p class="meta">模块：mallchat-transaction &nbsp;|&nbsp; 定位：mallchat-tools 生态 &nbsp;|&nbsp; 技术栈：Spring AOP + MyBatis Plus + RocketMQ</p>
+</section>
+
+<!-- ===== overview ===== -->
+<section id="overview">
+    <h2>模块简介</h2>
+    <p><code>mallchat-transaction</code> 是 MallChat 体系中解决「<strong>事务边界与业务执行解耦</strong>」问题的核心模块。它解决了一个经典分布式困境：</p>
+
+    <div class="callout warn">
+        <strong>问题：</strong>在 Spring <code>@Transactional</code> 方法中，数据库提交后执行的操作（如发送 MQ 消息、调用外部 API）如果在此刻失败，事务已经提交无法回滚，导致数据不一致。
+    </div>
+
+    <p>该模块通过 <code>@SecureInvoke</code> 注解 + AOP 切面 + 数据库记录 + 定时重试，提供了一种 <strong>轻量、无侵入的「事务后至少执行一次」</strong> 的保证机制。</p>
+
+    <div class="callout info">
+        <strong>核心理念：</strong>如果某个操作「必须随着事务的成功而成功」，那么不要在当前线程中立即执行它——先把执行计划持久化到数据库，等事务提交后再执行。失败了就重试，直到成功或达到上限。
+    </div>
+
+    <h3>模块全景</h3>
+    <table>
+        <tr><th>层</th><th>组件</th><th>职责</th></tr>
+        <tr><td>注解</td><td><code>@SecureInvoke</code></td><td>标记需要安全执行的方法</td></tr>
+        <tr><td>切面</td><td><code>SecureInvokeAspect</code></td><td>拦截注解方法，序列化调用信息</td></tr>
+        <tr><td>服务</td><td><code>SecureInvokeService</code></td><td>调用持久化、事务回调注册、反射执行、重试调度</td></tr>
+        <tr><td>DAO</td><td><code>SecureInvokeRecordDao</code></td><td>MyBatis Plus 数据访问</td></tr>
+        <tr><td>实体</td><td><code>SecureInvokeRecord</code></td><td>数据库映射实体（含 JSON 列）</td></tr>
+        <tr><td>DTO</td><td><code>SecureInvokeDTO</code></td><td>方法调用快照（类名、方法名、参数类型、参数值）</td></tr>
+        <tr><td>持有者</td><td><code>SecureInvokeHolder</code></td><td>ThreadLocal 防重入标记</td></tr>
+        <tr><td>生产者</td><td><code>MQProducer</code></td><td>基于 @SecureInvoke 的可靠消息发送</td></tr>
+        <tr><td>配置</td><td><code>TransactionAutoConfiguration</code></td><td>Spring Boot 自动配置入口</td></tr>
+    </table>
+</section>
+
+<!-- ===== philosophy ===== -->
+<section id="philosophy">
+    <h2>设计思想</h2>
+
+    <h3>1. 先记录，后执行 —— "Write-Ahead Execution"</h3>
+    <p>传统做法是在事务中直接执行操作，成功则提交、失败则回滚。但当操作本身是外部调用（MQ、RPC、文件上传）时，外部系统的成功/失败不应影响本地事务的原子性。<code>@SecureInvoke</code> 的做法是：<strong>先把「执行计划」作为一条记录写入数据库（和主事务同库，享受本地事务保护），待事务提交后再真正执行</strong>。这本质上是将"执行"与"事务提交"解耦。</p>
+
+    <h3>2. At-Least-Once 语义</h3>
+    <p>该模块提供的是"至少执行一次"保证，而非"恰好一次"。可能在极端情况下（执行成功但更新数据库状态失败）导致重复执行。因此，<strong>被标记的方法应当是幂等的</strong>。这是设计上的有意取舍——用偶发的重复执行换取「绝不丢失」的确定性。</p>
+
+    <h3>3. 异步优先，同步可选</h3>
+    <p>默认情况下，事务提交后的执行是异步的（提交到 <code>Executor</code> 线程池）。这有两个好处：</p>
+    <ul>
+        <li>调用线程不必等待方法执行，快速释放数据库连接</li>
+        <li>即使方法执行较慢（如 HTTP 调用、文件处理），也不会阻塞 web 线程</li>
+    </ul>
+    <p>同步模式供 MQ 消费等场景使用，这些场景在意链路追踪上下文（Tracing 信息绑定在当前线程），对耗时相对不敏感。</p>
+
+    <h3>4. 指数退避重试 —— 优雅应对失败</h3>
+    <p>重试间隔呈指数增长：2min → 4min → 8min → 16min……这种退避策略：</p>
+    <ul>
+        <li>避免下游系统在故障恢复时被重试洪峰压垮（Thundering Herd）</li>
+        <li>短期抖动（网络闪断、连接池耗尽）在早期重试中自愈</li>
+        <li>长期故障不会造成无意义的频繁轮询</li>
+    </ul>
+
+    <h3>5. 防重入 —— 避免无限递归</h3>
+    <p>当重试机制通过反射重新执行目标方法时，该方法上的 <code>@SecureInvoke</code> 注解会再次触发切面。如果切面不加区分地再次记录，就会形成「执行 → 记录 → 提交 → 重试 → 执行 → 记录 → …」的无限循环。<code>SecureInvokeHolder</code> 通过 ThreadLocal 标记当前是否为重试调用，切面据此跳过记录逻辑，直接执行。</p>
+
+    <h3>6. 自包含、零配置集成</h3>
+    <p>通过 <code>spring.factories</code> 注册自动配置，任何 Spring Boot 项目只要引入此 jar 即可使用 <code>@SecureInvoke</code> 注解，无需 <code>@Import</code>、<code>@ComponentScan</code> 或手动配置。符合 Spring Boot 的「Opinionated Auto-Configuration」哲学。</p>
+</section>
+
+<!-- ===== arch ===== -->
+<section id="arch">
+    <h2>整体架构</h2>
+
+    <div class="diagram">
+╔══════════════════════════════════════════════════════════════╗
+║                     Application Layer                       ║
+║  @Transactional + @SecureInvoke  method()                  ║
+╚══════════════════════════════════════════════════════════════╝
+                      │
+                      ▼
+╔══════════════════════════════════════════════════════════════╗
+║              <span class="hl">SecureInvokeAspect</span> (AOP @Around)                    ║
+║  1. 检查是否在事务中 &amp; 是否正在重试                           ║
+║  2. 序列化调用信息 → SecureInvokeDTO                          ║
+║  3. 调用 SecureInvokeService.invoke()                        ║
+╚══════════════════════════════════════════════════════════════╝
+                      │
+                      ▼
+╔══════════════════════════════════════════════════════════════╗
+║              <span class="hl">SecureInvokeService</span>                              ║
+║  ┌─────────────┐    ┌──────────────────┐                     ║
+║  │ save(record)│───▶│ TransactionSync  │                     ║
+║  │ (同库同事务) │    │ .afterCommit()   │                     ║
+║  └─────────────┘    └────────┬─────────┘                     ║
+║                              │                                ║
+║                   ┌──────────┴──────────┐                     ║
+║                   ▼                     ▼                     ║
+║           ┌─────────────┐     ┌──────────────┐                ║
+║           │ doAsyncInvoke│     │  doInvoke    │                ║
+║           │ (Executor)   │     │  (同步执行)   │                ║
+║           └──────┬──────┘     └──────┬───────┘                ║
+║                  │                   │                         ║
+║                  ▼                   ▼                         ║
+║           ┌──────────────────────────────┐                     ║
+║           │   反射调用目标方法             │                     ║
+║           │   SpringUtil.getBean()       │                     ║
+║           │   ReflectUtil.getMethod()    │                     ║
+║           │   method.invoke(bean, args)  │                     ║
+║           └──────────┬───────┬───────────┘                     ║
+║                      │       │                                 ║
+║              成功 ←──┘       └──→ 失败                         ║
+║              ▼                       ▼                         ║
+║      removeRecord(id)        retryRecord(record, err)          ║
+║      (删除记录)                (更新状态/退避时间/次数)          ║
+╚══════════════════════════════════════════════════════════════╝
+                      │
+                      ▼
+╔══════════════════════════════════════════════════════════════╗
+║              <span class="hl">@Scheduled retry()</span>  (cron: */5 * * * * ?)         ║
+║  查询 STATUS_WAIT + nextRetryTime 已过期 + createTime &gt; 2min   ║
+║  对每条记录调用 doAsyncInvoke()                                 ║
+╚══════════════════════════════════════════════════════════════╝
+                      │
+                      ▼
+╔══════════════════════════════════════════════════════════════╗
+║              <span class="hl">Database</span>  —  secure_invoke_record 表              ║
+║  id | secure_invoke_json(JSON) | status | next_retry_time    ║
+║  retry_times | max_retry_times | fail_reason | create_time    ║
+╚══════════════════════════════════════════════════════════════╝
+    </div>
+
+    <h3>模块外部依赖</h3>
+    <table>
+        <tr><th>依赖</th><th>来源</th><th>用途</th></tr>
+        <tr><td><code>mallchat-common-starter</code></td><td>同一项目</td><td>提供 <code>JsonUtils</code>、<code>SpElUtils</code>、<code>RedisUtils</code></td></tr>
+        <tr><td>Spring Boot / Spring AOP</td><td>父 POM 传递</td><td>切面代理、事务同步、定时调度</td></tr>
+        <tr><td>MyBatis Plus</td><td>父 POM 传递</td><td>ORM、JSON 类型处理器</td></tr>
+        <tr><td>RocketMQ</td><td>父 POM 传递</td><td>MQProducer 可靠消息发送</td></tr>
+        <tr><td>Hutool</td><td>父 POM 传递</td><td>反射工具、日期工具、Spring 工具</td></tr>
+        <tr><td>Lombok</td><td>父 POM 传递</td><td>@Data、@Builder、@Slf4j</td></tr>
+    </table>
+</section>
+
+<!-- ===== flow ===== -->
+<section id="flow">
+    <h2>核心数据流</h2>
+
+    <p>一次完整的 <code>@SecureInvoke</code> 调用生命周期如下：</p>
+
+    <div class="diagram">
+<span class="hl">[Phase 1 — 切面拦截]</span>
+  ① 调用方在 @Transactional 方法中调用 @SecureInvoke 方法
+  ② SecureInvokeAspect 拦截：
+     ├─ 如果 SecureInvokeHolder.isInvoking() == true → 直接 proceed()，跳过
+     ├─ 如果无活动事务 → 直接 proceed()，跳过
+     └─ 否则 ↓
+
+<span class="hl">[Phase 2 — 执行计划持久化]</span>
+  ③ 切面构建 SecureInvokeDTO（类名、方法名、参数类型JSON、参数值JSON）
+  ④ 构建 SecureInvokeRecord（maxRetryTimes、nextRetryTime = now + 2min）
+  ⑤ SecureInvokeService.invoke(record, async)：
+     ├─ 保存 record 到数据库（与业务事务同一事务）
+     └─ 注册 TransactionSynchronization.afterCommit() 回调
+
+<span class="hl">[Phase 3 — 事务提交后执行]</span>
+  ⑥ 业务 @Transactional 方法正常结束 → Spring 提交事务
+  ⑦ afterCommit() 回调触发：
+     ├─ async=true  → doAsyncInvoke() → Executor 线程池执行
+     └─ async=false → doInvoke()      → 当前线程执行
+  ⑧ doInvoke()：
+     ├─ SecureInvokeHolder.setInvoking()     ← 防重入
+     ├─ 反射：SpringUtil.getBean() → 获取 Spring Bean
+     ├─ 反射：ReflectUtil.getMethod() → 定位目标方法
+     ├─ 反射：JsonUtils 反序列化参数 → method.invoke()
+     ├─ 成功 → removeRecord(id)  ← 删除记录
+     └─ 失败 → retryRecord()     ← 更新退避时间/次数/失败原因
+  ⑨ SecureInvokeHolder.invoked()    ← 清理 ThreadLocal
+
+<span class="hl">[Phase 4 — 定时重试（持续进行）]</span>
+  ⑩ @Scheduled(cron = "*/5 * * * * ?") retry()：
+     ├─ DAO 查询条件：
+     │   ├─ status = STATUS_WAIT (1)
+     │   ├─ next_retry_time &lt; now()
+     │   └─ create_time &lt; now() - 2min (避免刚入库的数据被拉取)
+     └─ 对每条记录 → doAsyncInvoke()
+  ⑪ doInvoke() 中若再次失败 → 指数退避更新 nextRetryTime
+  ⑫ retryTimes &gt; maxRetryTimes → status = STATUS_FAIL (2) 停止重试
+    </div>
+
+    <div class="callout tip">
+        <strong>关键时序保证：</strong><code>save(record)</code> 与业务操作在同一个数据库事务中，因此如果业务操作回滚，执行计划记录也随之回滚——绝不会出现「事务回滚了但记录了一条要执行的假任务」的情况。
+    </div>
+</section>
+
+<!-- ===== annotation ===== -->
+<section id="annotation">
+    <h2>@SecureInvoke 注解</h2>
+
+    <p><span class="badge blue">@Retention(RUNTIME)</span> <span class="badge blue">@Target(METHOD)</span></p>
+
+    <table>
+        <tr><th>属性</th><th>类型</th><th>默认值</th><th>说明</th></tr>
+        <tr>
+            <td><code>maxRetryTimes</code></td>
+            <td>int</td>
+            <td>3</td>
+            <td>最大重试次数（含第一次正常执行）。例如默认值 3 意味着首次失败后可重试 2 次</td>
+        </tr>
+        <tr>
+            <td><code>async</code></td>
+            <td>boolean</td>
+            <td>true</td>
+            <td>是否异步执行。<code>true</code> 在事务提交后提交到线程池；<code>false</code> 在当前线程同步执行</td>
+        </tr>
+    </table>
+
+    <div class="callout tip">
+        <strong>设计意图：</strong>注解本身不定义任何"执行什么"，只声明"要保证执行"。具体行为由 AOP 切面和 SecureInvokeService 提供。这是关注点分离的体现。
+    </div>
+</section>
+
+<!-- ===== aspect ===== -->
+<section id="aspect">
+    <h2>SecureInvokeAspect 切面</h2>
+
+    <p><span class="badge green">@Aspect</span> <span class="badge green">@Order(HIGHEST_PRECEDENCE + 1)</span> <span class="badge green">@Component</span></p>
+
+    <p>使用 <code>@Around("@annotation(secureInvoke)")</code> 拦截所有标注了 <code>@SecureInvoke</code> 的方法。</p>
+
+    <h3>执行逻辑</h3>
+    <table>
+        <tr><th>条件</th><th>行为</th></tr>
+        <tr>
+            <td><code>SecureInvokeHolder.isInvoking() == true</code></td>
+            <td>直接执行原方法，不记录。表明这是重试调用，避免循环</td>
+        </tr>
+        <tr>
+            <td>无活动事务</td>
+            <td>直接执行原方法，不记录。非事务场景不需要此模块的保证</td>
+        </tr>
+        <tr>
+            <td>有活动事务 + 非重试</td>
+            <td>序列化方法调用 → 构建 SecureInvokeRecord → 调用 service.invoke()</td>
+        </tr>
+    </table>
+
+    <h3>序列化细节</h3>
+    <pre>SecureInvokeDTO:
+  className    = method.getDeclaringClass().getName()
+  methodName   = method.getName()
+  parameterTypes = JsonUtils.toStr([paramType1.class.getName(), ...])
+  args         = JsonUtils.toStr(joinPoint.getArgs())</pre>
+
+    <div class="callout warn">
+        <strong>注意：</strong>切面在捕获到 <code>@SecureInvoke</code> 方法后 <strong>返回 null</strong>，不返回原方法的返回值。因为实际执行被延迟到事务提交之后。调用方不应依赖 <code>@SecureInvoke</code> 方法的返回值。
+    </div>
+</section>
+
+<!-- ===== service ===== -->
+<section id="service">
+    <h2>SecureInvokeService 核心服务</h2>
+
+    <p><span class="badge green">@AllArgsConstructor</span> <span class="badge green">非 Spring Bean（由 @Configuration 手动 new）</span></p>
+
+    <p>整个模块的心脏，负责执行计划保存、事务回调注册、反射执行和定时重试。</p>
+
+    <h3>方法清单</h3>
+    <table>
+        <tr><th>方法</th><th>可见性</th><th>说明</th></tr>
+        <tr><td><code>invoke(record, async)</code></td><td>public</td><td>保存记录 + 注册 <code>TransactionSynchronization.afterCommit()</code> 回调</td></tr>
+        <tr><td><code>doInvoke(record)</code></td><td>public</td><td>通过反射执行方法：获取 Bean → 定位 Method → 反序列化参数 → invoke → 成功删除 / 失败更新退避</td></tr>
+        <tr><td><code>doAsyncInvoke(record)</code></td><td>public</td><td>将 doInvoke 提交给 Executor 执行</td></tr>
+        <tr><td><code>retry()</code></td><td>public</td><td><code>@Scheduled(cron = "*/5 * * * * ?")</code> 每 5 秒扫描待重试记录并异步重试</td></tr>
+        <tr><td><code>save(record)</code></td><td>public</td><td>委托 DAO 保存记录</td></tr>
+        <tr><td><code>retryRecord(record, errorMsg)</code></td><td>private</td><td>更新重试次数 + 指数退避 nextRetryTime + 失败原因。超过上限则标记 STATUS_FAIL</td></tr>
+        <tr><td><code>removeRecord(id)</code></td><td>private</td><td>执行成功后删除数据库记录</td></tr>
+    </table>
+
+    <h3>反射执行机制</h3>
+    <pre>doInvoke(record):
+  1. SecureInvokeHolder.setInvoking()    ← 设防重入标记
+  2. Class.forName(className)            ← 加载类
+  3. SpringUtil.getBean(beanClass)       ← 从 Spring 容器获取 Bean（支持 AOP 代理）
+  4. JsonUtils.toList(parameterTypes)    ← 还原参数类型列表
+  5. ReflectUtil.getMethod(bean, methodName, paramClasses)  ← 定位 Method
+  6. JsonUtils 反序列化 args             ← 还原参数值
+  7. method.invoke(bean, args)           ← 真正执行
+  8. 成功 → removeRecord(id)
+     失败 → retryRecord(record, e)
+  9. finally → SecureInvokeHolder.invoked()  ← 清理标记</pre>
+
+    <h3>指数退避算法</h3>
+    <pre>waitMinutes = Math.pow(RETRY_INTERVAL_MINUTES, retryTimes)
+// RETRY_INTERVAL_MINUTES = 2.0
+// retryTimes=1 → 2min   retryTimes=2 → 4min
+// retryTimes=3 → 8min   retryTimes=4 → 16min</pre>
+
+    <h3>定时重试</h3>
+    <pre>@Scheduled(cron = "*/5 * * * * ?")  // 每 5 秒
+retry():
+  records = dao.getWaitRetryRecords()
+  for each record → doAsyncInvoke(record)
+
+DAO 查询条件:
+  - status = STATUS_WAIT (1)
+  - next_retry_time &lt; now()
+  - create_time &lt; now() - 2min  （避免刚入库的数据被拉取，给事务提交留出窗口）</pre>
+</section>
+
+<!-- ===== dao ===== -->
+<section id="dao">
+    <h2>数据访问层</h2>
+
+    <p><code>SecureInvokeRecordDao</code> 继承 <code>ServiceImpl&lt;SecureInvokeRecordMapper, SecureInvokeRecord&gt;</code>，提供标准的 MyBatis Plus CRUD 操作和一个自定义查询方法：</p>
+
+    <h3>getWaitRetryRecords()</h3>
+    <p>查询符合条件的待重试记录：</p>
+    <ul>
+        <li><code>status = STATUS_WAIT (1)</code></li>
+        <li><code>next_retry_time &lt; now()</code>（已经到达或超过重试时间）</li>
+        <li><code>create_time &lt; now() - 2min</code>（避免拉取刚刚插入、事务尚未提交的记录）</li>
+    </ul>
+
+    <div class="callout info">
+        <strong>为什么需要 create_time 条件？</strong>记录在业务事务提交前就被 insert 到数据库了。如果定时任务在事务提交前就扫描到这条记录（事务可能持有锁未释放），会出现"事务还没提交就开始重试"的竞态条件。2 分钟窗口确保了事务有充足的时间完成提交。
+    </div>
+</section>
+
+<!-- ===== entity ===== -->
+<section id="entity">
+    <h2>实体与 DTO</h2>
+
+    <h3>SecureInvokeRecord（数据库实体）</h3>
+    <table>
+        <tr><th>字段</th><th>类型</th><th>说明</th></tr>
+        <tr><td><code>id</code></td><td>Long (自增)</td><td>主键</td></tr>
+        <tr><td><code>secure_invoke_json</code></td><td>JSON → SecureInvokeDTO</td><td>方法调用快照，使用 JacksonTypeHandler 序列化</td></tr>
+        <tr><td><code>status</code></td><td>byte (1=等待, 2=失败)</td><td>执行状态</td></tr>
+        <tr><td><code>next_retry_time</code></td><td>Date</td><td>下次重试时间</td></tr>
+        <tr><td><code>retry_times</code></td><td>Integer</td><td>已重试次数</td></tr>
+        <tr><td><code>max_retry_times</code></td><td>Integer</td><td>最大重试次数（来自注解）</td></tr>
+        <tr><td><code>fail_reason</code></td><td>String</td><td>最近一次失败的异常信息</td></tr>
+        <tr><td><code>create_time / update_time</code></td><td>Date</td><td>自动填充时间</td></tr>
+    </table>
+
+    <h3>SecureInvokeDTO（数据传输对象）</h3>
+    <pre>SecureInvokeDTO:
+  className       // 全限定类名，如 "com.abin.mallchat.common.chat.service.impl.ChatServiceImpl"
+  methodName      // 方法名，如 "sendMsg"
+  parameterTypes  // JSON数组，如 ["java.lang.Long", "java.lang.String"]
+  args            // JSON数组，如 [123, "hello"]</pre>
+
+    <p>DTO 被序列化为 JSON 存储在 <code>secure_invoke_json</code> 列中。MyBatis Plus 的 <code>JacksonTypeHandler</code> 负责自动序列化/反序列化。</p>
+</section>
+
+<!-- ===== holder ===== -->
+<section id="holder">
+    <h2>SecureInvokeHolder — 防重入守卫</h2>
+
+    <p>一个极简的 <code>ThreadLocal&lt;Boolean&gt;</code> 持有者，提供三个静态方法：</p>
+
+    <table>
+        <tr><th>方法</th><th>用途</th></tr>
+        <tr><td><code>setInvoking()</code></td><td>doInvoke() 执行前调用，标记当前线程正在重试执行</td></tr>
+        <tr><td><code>isInvoking()</code></td><td>切面中检查，若为 true 则跳过切面逻辑直接执行</td></tr>
+        <tr><td><code>invoked()</code></td><td>doInvoke() 的 finally 块中调用，清理 ThreadLocal</td></tr>
+    </table>
+
+    <div class="callout warn">
+        <strong>为什么不用其他防重入方式？</strong>理论上可以在记录中加入一个"本次执行 ID"来实现幂等性检查，但这会引入额外的查询开销。ThreadLocal 方式零开销、零额外数据库交互，且与「当前执行必然由本次重试触发」的语义完全匹配。
+    </div>
+</section>
+
+<!-- ===== mq ===== -->
+<section id="mq">
+    <h2>MQProducer — 可靠消息发送</h2>
+
+    <p><code>MQProducer</code> 是 <code>@SecureInvoke</code> 最典型的使用场景。它提供两种消息发送方式：</p>
+
+    <table>
+        <tr><th>方法</th><th>注解</th><th>语义</th></tr>
+        <tr>
+            <td><code>sendMsg(topic, body)</code></td>
+            <td style="color:#6b7280;">无</td>
+            <td>直接发送 RocketMQ 消息，无事务保证。如果发送时事务尚未提交，消费者可能在事务提交前就消费到数据，导致读取到不完整的状态</td>
+        </tr>
+        <tr>
+            <td><code>sendSecureMsg(topic, body, key)</code></td>
+            <td><span class="badge blue">@SecureInvoke</span></td>
+            <td>通过 <code>@SecureInvoke</code> 保证消息在事务提交后「至少发送一次」。第三个参数 <code>key</code> 被设置到 RocketMQ 的 <code>KEYS</code> 头部，用于消息去重或追踪</td>
+        </tr>
+    </table>
+
+    <div class="callout tip">
+        <strong>实践建议：</strong>在 MallChat 项目中，所有需要在事务后发送 MQ 消息的场景都应使用 <code>sendSecureMsg()</code>，而非 <code>sendMsg()</code>。这确保了消息不会在事务提交前被消费到，也不会因为事务提交后的瞬时故障丢失。
+    </div>
+</section>
+
+<!-- ===== configurer ===== -->
+<section id="configurer">
+    <h2>SecureInvokeConfigurer — 线程池定制 SPI</h2>
+
+    <p>一个函数式接口，允许应用自定义异步执行使用的线程池：</p>
+
+    <pre>@FunctionalInterface
+public interface SecureInvokeConfigurer {
+    @Nullable
+    default Executor getSecureInvokeExecutor() {
+        return null;  // 返回 null 表示使用默认的 ForkJoinPool.commonPool()
+    }
+}</pre>
+
+    <div class="callout info">
+        <strong>实现方式：</strong>实现该接口并声明为一个 Spring Bean 即可。<code>TransactionAutoConfiguration</code> 使用 <code>ObjectProvider</code> 收集所有实现，如果存在多于一个则抛出异常（防止歧义）。如果不存在，回退到 <code>ForkJoinPool.commonPool()</code>。
+    </div>
+
+    <p>典型自定义实现：</p>
+    <pre>@Bean
+public SecureInvokeConfigurer myConfigurer() {
+    return () -> Executors.newFixedThreadPool(4, new ThreadFactoryBuilder()
+            .setNameFormat("secure-invoke-%d")
+            .build());
+}</pre>
+</section>
+
+<!-- ===== autoconfig ===== -->
+<section id="autoconfig">
+    <h2>TransactionAutoConfiguration 自动配置</h2>
+
+    <p>通过 <code>spring.factories</code> 注册的 Spring Boot 自动配置类：</p>
+
+    <pre># META-INF/spring.factories
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+  com.abin.mallchat.transaction.config.TransactionAutoConfiguration</pre>
+
+    <h3>自动注册的组件</h3>
+    <table>
+        <tr><th>组件</th><th>方式</th><th>说明</th></tr>
+        <tr><td>SecureInvokeAspect</td><td><code>@Import</code></td><td>AOP 切面</td></tr>
+        <tr><td>SecureInvokeRecordDao</td><td><code>@Import</code></td><td>数据访问对象</td></tr>
+        <tr><td>SecureInvokeService</td><td><code>@Bean</code></td><td>核心服务（注入 DAO + Executor）</td></tr>
+        <tr><td>MQProducer</td><td><code>@Bean</code></td><td>可靠消息发送</td></tr>
+        <tr><td>SecureInvokeRecordMapper 扫描</td><td><code>@MapperScan</code></td><td>MyBatis Plus Mapper 注册</td></tr>
+        <tr><td>定时调度支持</td><td><code>@EnableScheduling</code></td><td>启用 @Scheduled 重试任务</td></tr>
+    </table>
+
+    <h3>Executor 解析逻辑</h3>
+    <pre>1. ObjectProvider 收集 SecureInvokeConfigurer Bean
+2. 如果存在 0 个 → 使用 ForkJoinPool.commonPool()
+3. 如果存在 1 个 → 调用 configurer.getSecureInvokeExecutor()
+   ├─ 返回非 null → 使用自定义 Executor
+   └─ 返回 null   → 使用 ForkJoinPool.commonPool()
+4. 如果存在 &gt; 1 个 → 抛出 IllegalStateException</pre>
+
+    <div class="callout warn">
+        <strong>注意：</strong>自动配置仅在模块被引入且 Spring Boot 的自动配置条件满足时生效。如果应用中存在多个 <code>SecureInvokeConfigurer</code>，启动时会报错——这是有意为之，避免线程池配置冲突导致不确定行为。
+    </div>
+</section>
+
+<!-- ===== usage ===== -->
+<section id="usage">
+    <h2>使用方式</h2>
+
+    <h3>1. 引入依赖</h3>
+    <pre>&lt;dependency&gt;
+    &lt;groupId&gt;com.abin.mallchat&lt;/groupId&gt;
+    &lt;artifactId&gt;mallchat-transaction&lt;/artifactId&gt;
+&lt;/dependency&gt;</pre>
+
+    <p>引入后自动配置生效，无需任何额外配置。</p>
+
+    <h3>2. 创建数据库表</h3>
+    <pre>CREATE TABLE `secure_invoke_record` (
+    `id`             BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `secure_invoke_json` JSON    NOT NULL COMMENT '方法调用快照',
+    `status`         TINYINT     NOT NULL DEFAULT 1 COMMENT '1待执行 2已失败',
+    `next_retry_time` DATETIME   NOT NULL COMMENT '下次重试时间',
+    `retry_times`    INT         NOT NULL DEFAULT 0 COMMENT '已重试次数',
+    `max_retry_times` INT        NOT NULL DEFAULT 3 COMMENT '最大重试次数',
+    `fail_reason`    TEXT        NULL     COMMENT '失败原因',
+    `create_time`    DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `update_time`    DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_status_next_retry (`status`, `next_retry_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;</pre>
+
+    <h3>3. 在方法上使用 @SecureInvoke</h3>
+    <pre>@Transactional
+@SecureInvoke(maxRetryTimes = 3, async = true)
+public void sendMsg(Long uid, String content) {
+    // 业务逻辑——将在事务提交后执行
+    rocketMQTemplate.send(topic, MessageBuilder.withPayload(content).build());
+}</pre>
+
+    <h3>4. 使用 MQProducer 发送可靠消息</h3>
+    <pre>@Autowired
+private MQProducer mqProducer;
+
+@Transactional
+public void businessMethod(Long userId) {
+    // 业务操作...
+    mqProducer.sendSecureMsg("topic-notify", notifyDTO, String.valueOf(userId));
+}</pre>
+
+    <h3>5. 自定义线程池（可选）</h3>
+    <pre>@Bean
+public SecureInvokeConfigurer secureInvokeConfigurer() {
+    return () -> {
+        ThreadPoolExecutor executor = new ThreadPoolExecutor(
+            2, 4, 60, TimeUnit.SECONDS,
+            new LinkedBlockingQueue<>(1000),
+            new ThreadFactoryBuilder().setNameFormat("secure-invoke-%d").build()
+        );
+        return executor;
+    };
+}</pre>
+
+    <div class="callout tip">
+        <strong>最佳实践：</strong>
+        <ul>
+            <li><code>@SecureInvoke</code> 标注的方法应当<strong>幂等</strong>——重试可能导致多次执行</li>
+            <li>方法参数类型必须是 Jackson 可序列化的</li>
+            <li>不要在 <code>@SecureInvoke</code> 方法上依赖返回值（切面返回 null）</li>
+            <li>DB 表务必建联合索引 <code>(status, next_retry_time)</code>，避免定时任务全表扫描</li>
+            <li>根据业务容忍度调整 <code>maxRetryTimes</code>，默认 3 次（约 2+4=6 分钟的自愈窗口）</li>
+        </ul>
+    </div>
+</section>
+
+<!-- ===== decisions ===== -->
+<section id="decisions">
+    <h2>关键设计决策</h2>
+
+    <h3>为什么不用 MQ 事务消息？</h3>
+    <p>RocketMQ 本身支持事务消息（半消息 + 本地事务检查），能够解决事务后发送消息的问题。但选择 <code>@SecureInvoke</code> 方案的原因：</p>
+    <ul>
+        <li><strong>通用性强：</strong>不限于 MQ 发送场景，可以保证任何操作的执行（API 调用、缓存更新、文件处理等）</li>
+        <li><strong>资源友好：</strong>不依赖 MQ 代理的事务消息能力，使用本地数据库即可</li>
+        <li><strong>轻量：</strong>无需额外的 MQ 事务回查机制，一条记录 + 一个定时任务即可</li>
+    </ul>
+
+    <h3>为什么执行参数要 JSON 序列化到数据库？</h3>
+    <ul>
+        <li><strong>解耦：</strong>执行计划的消费者（重试任务）不依赖原始调用者的内存状态</li>
+        <li><strong>持久化：</strong>即使应用重启，待重试的任务仍然在数据库中，不会丢失</li>
+        <li><strong>可观测性：</strong>DBA / 运维可以直接查看 <code>secure_invoke_json</code> 字段了解待执行的任务详情</li>
+    </ul>
+
+    <h3>为什么切面在有事务时才生效？</h3>
+    <p>如果当前没有 Spring 事务，<code>@SecureInvoke</code> 就直接执行方法，不做任何记录。原因：</p>
+    <ul>
+        <li>非事务场景下，方法执行失败本身就是最终结果，没有"事务已提交但操作未执行"的不一致问题</li>
+        <li>避免在非事务方法上无意义地写库和调度，减少数据库和线程池开销</li>
+    </ul>
+
+    <h3>为什么使用 ForkJoinPool.commonPool() 作为默认线程池？</h3>
+    <ul>
+        <li>ForkJoinPool 是 JDK 内置的、无需额外依赖的通用线程池</li>
+        <li>其工作窃取（Work-Stealing）机制适合异步执行的批量重试场景</li>
+        <li>允许用户通过 <code>SecureInvokeConfigurer</code> 完全自定义，不强制绑定</li>
+    </ul>
+
+    <h3>同步 vs 异步的取舍</h3>
+    <p>默认异步（<code>async = true</code>）的原因：</p>
+    <ul>
+        <li><code>@Transactional</code> 方法通常运行在 Web 请求线程中，应当尽快释放连接</li>
+        <li>被保证执行的操作往往涉及外部 IO（MQ、RPC），不适合阻塞 web 线程</li>
+    </ul>
+    <p>同步模式（<code>async = false</code>）的使用场景：</p>
+    <ul>
+        <li>MQ 消费者中调用 <code>@SecureInvoke</code> 方法——消费者对耗时容忍度高</li>
+        <li>链路追踪（Tracing）需要在同一线程中延续——跨线程会丢失 Trace ID</li>
+    </ul>
+
+    <h3>2 分钟避让窗口的意义</h3>
+    <p><code>getWaitRetryRecords()</code> 中 <code>create_time &lt; now() - 2min</code> 条件解决了以下问题：</p>
+    <ul>
+        <li><strong>事务未提交竞争：</strong>记录在事务提交前就已写入，定时任务可能在事务提交前就扫描到</li>
+        <li><strong>主从延迟：</strong>如果使用 MySQL 主从架构，刚写入的记录可能尚未同步到从库</li>
+        <li><strong>批量重试合理聚合：</strong>2 分钟窗口让同一批失败的任务聚合重试，减少碎片化调度</li>
+    </ul>
+
+    <h3>为什么不引入消息队列做重试？</h3>
+    <p>引入 MQ 做重试会带来额外的复杂度：需要专门的 retry topic、死信队列、消费组配置等。<code>@SecureInvoke</code> 使用数据库轮询方案，对于 MallChat 这种单体应用体量来说，<strong>简单、可靠、可观测</strong>，避免了引入额外中间件的运维成本。</p>
+</section>
+
+</div>
+
+</body>
+</html>
